@@ -1,0 +1,9 @@
+{
+  "name": "pptx-to-pdf-lambda",
+  "version": "1.0.0",
+  "description": "Lambda function to convert PPTX/PPT to PDF",
+  "main": "index.js",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.450.0"
+  }
+}
