@@ -53,6 +53,8 @@ export class PptxToPdfStack extends cdk.Stack {
       // 環境変数
       environment: {
         BUCKET_NAME: bucket.bucketName,
+        INPUT_PREFIX: 'input/',
+        OUTPUT_PREFIX: 'output/',
       },
 
       // 説明
@@ -63,11 +65,13 @@ export class PptxToPdfStack extends cdk.Stack {
     bucket.grantReadWrite(converterFunction);
 
     // S3イベント通知の設定
-    // .pptxまたは.pptファイルがアップロードされたときにLambdaをトリガー
+    // input/フォルダ内の.pptxまたは.pptファイルがアップロードされたときにLambdaをトリガー
+    // これによりoutput/フォルダへの書き込みでLambdaが再トリガーされることを防ぐ
     bucket.addEventNotification(
       s3.EventType.OBJECT_CREATED,
       new s3notifications.LambdaDestination(converterFunction),
       {
+        prefix: 'input/',
         suffix: '.pptx',
       }
     );
@@ -76,6 +80,7 @@ export class PptxToPdfStack extends cdk.Stack {
       s3.EventType.OBJECT_CREATED,
       new s3notifications.LambdaDestination(converterFunction),
       {
+        prefix: 'input/',
         suffix: '.ppt',
       }
     );
@@ -85,6 +90,18 @@ export class PptxToPdfStack extends cdk.Stack {
       value: bucket.bucketName,
       description: 'The name of the S3 bucket for uploading PPTX/PPT files',
       exportName: 'PptxToPdfBucketName',
+    });
+
+    new cdk.CfnOutput(this, 'InputFolder', {
+      value: `s3://${bucket.bucketName}/input/`,
+      description: 'Upload PPTX/PPT files to this folder',
+      exportName: 'PptxToPdfInputFolder',
+    });
+
+    new cdk.CfnOutput(this, 'OutputFolder', {
+      value: `s3://${bucket.bucketName}/output/`,
+      description: 'Converted PDF files will be saved to this folder',
+      exportName: 'PptxToPdfOutputFolder',
     });
 
     new cdk.CfnOutput(this, 'LambdaFunctionName', {

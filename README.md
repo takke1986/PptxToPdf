@@ -12,10 +12,12 @@ AWS S3にアップロードされた.pptxおよび.pptファイルを自動的�
 
 ## アーキテクチャ
 
-1. ユーザーが.pptxまたは.pptファイルをS3バケットにアップロード
-2. S3イベント通知がLambda関数をトリガー
+1. ユーザーが.pptxまたは.pptファイルをS3バケットの`input/`フォルダにアップロード
+2. S3イベント通知がLambda関数をトリガー（`input/`フォルダ内のファイルのみ）
 3. Lambda関数がファイルをダウンロードし、LibreOfficeを使用してPDFに変換
-4. 変換されたPDFファイルを同じS3バケットにアップロード
+4. 変換されたPDFファイルをS3バケットの`output/`フォルダにアップロード
+
+**重要**: `input/`と`output/`フォルダを分離することで、PDFファイルのアップロードによるLambda関数の無限ループを防止しています。
 
 ## 前提条件
 
@@ -44,19 +46,51 @@ npm run deploy
 cdk bootstrap
 ```
 
-デプロイが完了すると、S3バケット名とLambda関数名が出力されます。
+デプロイが完了すると、以下の情報が出力されます：
+- S3バケット名
+- 入力フォルダ（input/）のパス
+- 出力フォルダ（output/）のパス
+- Lambda関数名
 
 ## 使い方
 
-1. デプロイ後に表示されたS3バケット名を確認
-2. AWS CLIまたはAWSコンソールを使用してPowerPointファイルをアップロード
+### 1. ファイルをアップロード
+
+PowerPointファイルは**必ず`input/`フォルダ**にアップロードしてください。
 
 ```bash
 # AWS CLIでファイルをアップロード
-aws s3 cp presentation.pptx s3://your-bucket-name/
+aws s3 cp presentation.pptx s3://your-bucket-name/input/
+
+# サブフォルダを使用する場合
+aws s3 cp presentation.pptx s3://your-bucket-name/input/2024/january/
 ```
 
-3. 数秒後、同じバケットに`presentation.pdf`が作成されます
+### 2. PDFファイルを確認
+
+数秒後、`output/`フォルダに変換されたPDFが作成されます。
+
+```bash
+# 変換されたPDFをダウンロード
+aws s3 cp s3://your-bucket-name/output/presentation.pdf .
+
+# サブフォルダを使用した場合
+aws s3 cp s3://your-bucket-name/output/2024/january/presentation.pdf .
+```
+
+### フォルダ構造の例
+
+```
+s3://your-bucket-name/
+├── input/                    # PPTXファイルをここにアップロード
+│   ├── presentation.pptx
+│   └── reports/
+│       └── monthly.ppt
+└── output/                   # PDFファイルがここに自動生成される
+    ├── presentation.pdf
+    └── reports/
+        └── monthly.pdf
+```
 
 ## ファイル構成
 
