@@ -8,30 +8,17 @@ const s3Client = new S3Client({});
 /**
  * Lambda handler function
  * S3にアップロードされた.pptx/.pptファイルをPDFに変換します
+ * EventBridge経由でトリガーされます
  */
 exports.handler = async (event) => {
   console.log('Event:', JSON.stringify(event, null, 2));
 
   try {
-    // S3イベントから情報を取得
-    const record = event.Records[0];
-    const bucket = record.s3.bucket.name;
-    const key = decodeURIComponent(record.s3.object.key.replace(/\+/g, ' '));
+    // EventBridgeからの情報を取得
+    const bucket = event.detail.bucket.name;
+    const key = decodeURIComponent(event.detail.object.key.replace(/\+/g, ' '));
 
     console.log(`Processing file: ${key} from bucket: ${bucket}`);
-
-    // 環境変数からプレフィックスを取得
-    const inputPrefix = process.env.INPUT_PREFIX || 'input/';
-    const outputPrefix = process.env.OUTPUT_PREFIX || 'output/';
-
-    // input/フォルダ以外のファイルはスキップ（安全対策）
-    if (!key.startsWith(inputPrefix)) {
-      console.log(`Skipping file not in ${inputPrefix}: ${key}`);
-      return {
-        statusCode: 200,
-        body: JSON.stringify({ message: 'File not in input folder' })
-      };
-    }
 
     // ファイル拡張子をチェック
     const ext = path.extname(key).toLowerCase();
@@ -86,15 +73,9 @@ exports.handler = async (event) => {
       throw new Error('PDF file was not generated');
     }
 
-    // PDFファイルをS3にアップロード（output/フォルダに保存）
-    // input/xxx.pptx -> output/xxx.pdf に変換
-    const fileName = path.basename(key, ext);
-    const relativePath = key.substring(inputPrefix.length);
-    const relativeDir = path.dirname(relativePath);
-    const pdfKey = relativeDir === '.'
-      ? `${outputPrefix}${fileName}.pdf`
-      : `${outputPrefix}${relativeDir}/${fileName}.pdf`;
-
+    // PDFファイルをS3にアップロード（同じフォルダに保存）
+    // xxx.pptx -> xxx.pdf に変換
+    const pdfKey = key.replace(/\.(pptx|ppt)$/i, '.pdf');
     console.log(`Uploading PDF to S3: ${pdfKey}`);
 
     const pdfBuffer = fs.readFileSync(outputFile);
