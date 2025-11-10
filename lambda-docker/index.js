@@ -1,4 +1,4 @@
-const { S3Client, GetObjectCommand, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -89,6 +89,20 @@ exports.handler = async (event) => {
 
     console.log('PDF uploaded successfully');
 
+    // 元のPPTX/PPTファイルを削除
+    console.log(`Deleting original file: ${key}`);
+    try {
+      const deleteObjectCommand = new DeleteObjectCommand({
+        Bucket: bucket,
+        Key: key
+      });
+      await s3Client.send(deleteObjectCommand);
+      console.log('Original file deleted successfully');
+    } catch (deleteError) {
+      console.error('Error deleting original file:', deleteError);
+      // 削除エラーは無視して続行
+    }
+
     // 一時ファイルをクリーンアップ
     try {
       fs.unlinkSync(inputFile);
@@ -100,9 +114,9 @@ exports.handler = async (event) => {
     return {
       statusCode: 200,
       body: JSON.stringify({
-        message: 'PDF conversion successful',
-        inputFile: key,
-        outputFile: pdfKey
+        message: 'PDF conversion successful, original file deleted',
+        originalFile: key,
+        pdfFile: pdfKey
       })
     };
 
