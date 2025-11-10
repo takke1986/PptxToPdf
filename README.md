@@ -8,14 +8,17 @@ AWS S3にアップロードされた.pptxおよび.pptファイルを自動的�
 
 - **S3バケット**: PowerPointファイルのアップロード先
 - **Lambda関数**: LibreOfficeを使用してPPTX/PPTファイルをPDFに変換
-- **S3イベント通知**: ファイルアップロード時にLambda関数を自動トリガー
+- **EventBridge**: .pptx/.pptファイルのアップロード時のみLambda関数を自動トリガー
 
 ## アーキテクチャ
 
 1. ユーザーが.pptxまたは.pptファイルをS3バケットにアップロード
-2. S3イベント通知がLambda関数をトリガー
-3. Lambda関数がファイルをダウンロードし、LibreOfficeを使用してPDFに変換
-4. 変換されたPDFファイルを同じS3バケットにアップロード
+2. S3がEventBridgeにイベントを送信
+3. EventBridgeが.pptx/.pptファイルのみをフィルタリングしてLambda関数をトリガー
+4. Lambda関数がファイルをダウンロードし、LibreOfficeを使用してPDFに変換
+5. 変換されたPDFファイルを同じフォルダにアップロード
+
+**重要**: EventBridgeのフィルタリング機能により、.pdfファイルのアップロードではLambda関数がトリガーされないため、無限ループを防止しています。
 
 ## 前提条件
 
@@ -44,19 +47,54 @@ npm run deploy
 cdk bootstrap
 ```
 
-デプロイが完了すると、S3バケット名とLambda関数名が出力されます。
+デプロイが完了すると、以下の情報が出力されます：
+- S3バケット名
+- S3バケットURL
+- Lambda関数名
+- EventBridgeルール名
 
 ## 使い方
 
-1. デプロイ後に表示されたS3バケット名を確認
-2. AWS CLIまたはAWSコンソールを使用してPowerPointファイルをアップロード
+### 1. ファイルをアップロード
+
+PowerPointファイルをS3バケットの任意の場所にアップロードしてください。
 
 ```bash
 # AWS CLIでファイルをアップロード
 aws s3 cp presentation.pptx s3://your-bucket-name/
+
+# サブフォルダを使用する場合
+aws s3 cp presentation.pptx s3://your-bucket-name/2024/january/
 ```
 
-3. 数秒後、同じバケットに`presentation.pdf`が作成されます
+### 2. PDFファイルを確認
+
+数秒後、**同じフォルダ**に変換されたPDFが作成されます。
+
+```bash
+# 変換されたPDFをダウンロード
+aws s3 cp s3://your-bucket-name/presentation.pdf .
+
+# サブフォルダを使用した場合
+aws s3 cp s3://your-bucket-name/2024/january/presentation.pdf .
+```
+
+### フォルダ構造の例
+
+```
+s3://your-bucket-name/
+├── presentation.pptx      # アップロード
+├── presentation.pdf       # 自動生成
+└── reports/
+    ├── monthly.ppt        # アップロード
+    └── monthly.pdf        # 自動生成
+```
+
+### 動作の仕組み
+
+- EventBridgeは`.pptx`と`.ppt`で終わるファイルのみをトリガー
+- `.pdf`ファイルはトリガーされないため、無限ループは発生しません
+- 元のファイルと変換後のPDFが同じ場所に保存されます
 
 ## ファイル構成
 
@@ -80,11 +118,11 @@ aws s3 cp presentation.pptx s3://your-bucket-name/
 
 Lambda関数は以下の処理を実行します：
 
-1. S3イベントからバケット名とオブジェクトキーを取得
+1. EventBridgeイベントからバケット名とオブジェクトキーを取得
 2. .pptxまたは.ppt拡張子を確認
 3. S3からファイルをダウンロード
 4. LibreOfficeを使用してPDFに変換
-5. 変換されたPDFをS3にアップロード
+5. 変換されたPDFを同じフォルダにアップロード
 6. 一時ファイルをクリーンアップ
 
 ## カスタマイズ

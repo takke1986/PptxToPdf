@@ -1,7 +1,8 @@
 import * as cdk from 'aws-cdk-lib';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import * as s3notifications from 'aws-cdk-lib/aws-s3-notifications';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
 import { Construct } from 'constructs';
 import * as path from 'path';
 
@@ -22,6 +23,9 @@ export class PptxToPdfStack extends cdk.Stack {
 
       // パブリックアクセスをブロック
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+
+      // EventBridge通知を有効化
+      eventBridgeEnabled: true,
 
       // CORS設定（必要に応じて調整）
       cors: [
@@ -62,23 +66,30 @@ export class PptxToPdfStack extends cdk.Stack {
     // Lambda関数にS3バケットへの読み取り・書き込み権限を付与
     bucket.grantReadWrite(converterFunction);
 
-    // S3イベント通知の設定
-    // .pptxまたは.pptファイルがアップロードされたときにLambdaをトリガー
-    bucket.addEventNotification(
-      s3.EventType.OBJECT_CREATED,
-      new s3notifications.LambdaDestination(converterFunction),
-      {
-        suffix: '.pptx',
-      }
-    );
+    // EventBridgeルールの設定
+    // .pptxまたは.pptファイルがアップロードされたときのみLambdaをトリガー
+    // .pdfファイルはトリガーされないため、無限ループを防止
+    const rule = new events.Rule(this, 'PptxToPdfRule', {
+      description: 'Trigger Lambda when PPTX or PPT files are uploaded to S3',
+      eventPattern: {
+        source: ['aws.s3'],
+        detailType: ['Object Created'],
+        detail: {
+          bucket: {
+            name: [bucket.bucketName],
+          },
+          object: {
+            key: [
+              { suffix: '.pptx' },
+              { suffix: '.ppt' },
+            ],
+          },
+        },
+      },
+    });
 
-    bucket.addEventNotification(
-      s3.EventType.OBJECT_CREATED,
-      new s3notifications.LambdaDestination(converterFunction),
-      {
-        suffix: '.ppt',
-      }
-    );
+    // EventBridgeルールのターゲットとしてLambda関数を追加
+    rule.addTarget(new targets.LambdaFunction(converterFunction));
 
     // CloudFormationの出力
     new cdk.CfnOutput(this, 'BucketName', {
@@ -87,10 +98,22 @@ export class PptxToPdfStack extends cdk.Stack {
       exportName: 'PptxToPdfBucketName',
     });
 
+    new cdk.CfnOutput(this, 'BucketUrl', {
+      value: `s3://${bucket.bucketName}/`,
+      description: 'Upload PPTX/PPT files to this bucket (PDFs will be created in the same location)',
+      exportName: 'PptxToPdfBucketUrl',
+    });
+
     new cdk.CfnOutput(this, 'LambdaFunctionName', {
       value: converterFunction.functionName,
       description: 'The name of the Lambda function',
       exportName: 'PptxToPdfLambdaFunctionName',
+    });
+
+    new cdk.CfnOutput(this, 'EventBridgeRuleName', {
+      value: rule.ruleName,
+      description: 'The name of the EventBridge rule',
+      exportName: 'PptxToPdfEventBridgeRuleName',
     });
   }
 }
