@@ -17,7 +17,8 @@ RUN echo "Downloading LibreOffice for x86_64..." && \
     wget -q https://downloadarchive.documentfoundation.org/libreoffice/old/7.6.4.1/rpm/x86_64/LibreOffice_7.6.4.1_Linux_x86-64_rpm.tar.gz && \
     tar -xzf LibreOffice_7.6.4.1_Linux_x86-64_rpm.tar.gz && \
     cd LibreOffice_7.6.4.1_Linux_x86-64_rpm/RPMS && \
-    dnf install -y *.rpm && \
+    echo "Installing LibreOffice packages..." && \
+    rpm -Uvh --nodeps *.rpm && \
     cd /tmp && \
     rm -rf LibreOffice_7.6.4.1_Linux_x86-64_rpm* && \
     dnf clean all && \
