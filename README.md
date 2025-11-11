@@ -82,19 +82,24 @@ aws s3 cp s3://your-bucket-name/2024/january/presentation.pdf .
 ### フォルダ構造の例
 
 ```
+# アップロード前
 s3://your-bucket-name/
-├── presentation.pptx      # アップロード
-├── presentation.pdf       # 自動生成
-└── reports/
-    ├── monthly.ppt        # アップロード
-    └── monthly.pdf        # 自動生成
+└── (空)
+
+# presentation.pptxをアップロード
+s3://your-bucket-name/
+└── presentation.pptx
+
+# 変換完了後（元のファイルは削除されPDFに置き換わります）
+s3://your-bucket-name/
+└── presentation.pdf
 ```
 
 ### 動作の仕組み
 
 - EventBridgeは`.pptx`と`.ppt`で終わるファイルのみをトリガー
 - `.pdf`ファイルはトリガーされないため、無限ループは発生しません
-- 元のファイルと変換後のPDFが同じ場所に保存されます
+- 変換後のPDFが同じ場所に保存され、元のPPTX/PPTファイルは自動的に削除されます
 
 ## ファイル構成
 
@@ -123,7 +128,8 @@ Lambda関数は以下の処理を実行します：
 3. S3からファイルをダウンロード
 4. LibreOfficeを使用してPDFに変換
 5. 変換されたPDFを同じフォルダにアップロード
-6. 一時ファイルをクリーンアップ
+6. 元のPPTX/PPTファイルを削除
+7. 一時ファイルをクリーンアップ
 
 ## カスタマイズ
 
@@ -183,6 +189,137 @@ Lambda関数のログをCloudWatch Logsで確認してください：
 
 ```bash
 aws logs tail /aws/lambda/your-function-name --follow
+```
+
+## 実験用コマンド
+
+開発・テスト時に便利なコマンド集です。
+
+### デプロイ関連
+
+```bash
+# スタックをデプロイ
+npm run deploy
+
+# スタックを削除
+npm run destroy
+
+# CloudFormationテンプレートを生成（デプロイせずに確認）
+npm run synth
+
+# デプロイ前の差分を確認
+cdk diff
+```
+
+### S3操作
+
+```bash
+# バケット名を環境変数に設定（デプロイ後の出力から取得）
+export BUCKET_NAME="your-bucket-name"
+
+# テストファイルをアップロード
+aws s3 cp test.pptx s3://$BUCKET_NAME/
+
+# バケット内のファイル一覧を表示
+aws s3 ls s3://$BUCKET_NAME/
+
+# 特定のファイルを確認
+aws s3 ls s3://$BUCKET_NAME/ --human-readable --summarize
+
+# PDFファイルをダウンロード
+aws s3 cp s3://$BUCKET_NAME/test.pdf ./downloaded.pdf
+
+# バケット内の全ファイルを削除（注意！）
+aws s3 rm s3://$BUCKET_NAME/ --recursive
+```
+
+### Lambda関数の確認
+
+```bash
+# Lambda関数名を環境変数に設定
+export LAMBDA_NAME=$(aws cloudformation describe-stacks \
+  --stack-name PptxToPdfStack \
+  --query 'Stacks[0].Outputs[?OutputKey==`LambdaFunctionName`].OutputValue' \
+  --output text)
+
+# Lambda関数の情報を表示
+aws lambda get-function --function-name $LAMBDA_NAME
+
+# 最新のログを確認
+aws logs tail /aws/lambda/$LAMBDA_NAME --follow
+
+# 直近10分間のログを表示
+aws logs tail /aws/lambda/$LAMBDA_NAME --since 10m
+
+# エラーログのみをフィルタリング
+aws logs tail /aws/lambda/$LAMBDA_NAME --filter-pattern "ERROR"
+```
+
+### EventBridgeルールの確認
+
+```bash
+# EventBridgeルール名を取得
+export RULE_NAME=$(aws cloudformation describe-stacks \
+  --stack-name PptxToPdfStack \
+  --query 'Stacks[0].Outputs[?OutputKey==`EventBridgeRuleName`].OutputValue' \
+  --output text)
+
+# ルールの詳細を表示
+aws events describe-rule --name $RULE_NAME
+
+# ルールのターゲットを表示
+aws events list-targets-by-rule --rule $RULE_NAME
+```
+
+### テストシナリオ
+
+```bash
+# 1. 単一ファイルのテスト
+echo "test.pptx をアップロード..."
+aws s3 cp test.pptx s3://$BUCKET_NAME/
+sleep 10
+echo "変換結果を確認..."
+aws s3 ls s3://$BUCKET_NAME/
+
+# 2. サブフォルダのテスト
+echo "サブフォルダにファイルをアップロード..."
+aws s3 cp test.pptx s3://$BUCKET_NAME/folder1/folder2/test.pptx
+sleep 10
+aws s3 ls s3://$BUCKET_NAME/folder1/folder2/
+
+# 3. 複数ファイルの同時変換テスト
+echo "複数ファイルをアップロード..."
+for i in {1..5}; do
+  aws s3 cp test.pptx s3://$BUCKET_NAME/test-$i.pptx
+done
+sleep 30
+aws s3 ls s3://$BUCKET_NAME/
+
+# 4. ログをリアルタイム監視しながらテスト
+aws logs tail /aws/lambda/$LAMBDA_NAME --follow &
+aws s3 cp test.pptx s3://$BUCKET_NAME/monitored-test.pptx
+```
+
+### デバッグ用コマンド
+
+```bash
+# CloudWatch Logsのロググループ一覧
+aws logs describe-log-groups --log-group-name-prefix /aws/lambda/
+
+# 最新のログストリームを取得
+aws logs describe-log-streams \
+  --log-group-name /aws/lambda/$LAMBDA_NAME \
+  --order-by LastEventTime \
+  --descending \
+  --max-items 1
+
+# S3イベント通知の設定を確認
+aws s3api get-bucket-notification-configuration --bucket $BUCKET_NAME
+
+# Lambda関数の環境変数を確認
+aws lambda get-function-configuration \
+  --function-name $LAMBDA_NAME \
+  --query 'Environment'
 ```
 
 ## クリーンアップ

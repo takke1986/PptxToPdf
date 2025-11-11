@@ -2,16 +2,15 @@
 FROM public.ecr.aws/lambda/nodejs:20
 
 # 必要なパッケージとLibreOfficeをインストール
-RUN yum install -y \
-    libreoffice \
-    libreoffice-headless \
-    libreoffice-writer \
+# Amazon Linux 2023ではdnfを使用
+RUN dnf install -y \
+    libreoffice-core \
     libreoffice-impress \
-    liberation-sans-fonts \
-    liberation-serif-fonts \
-    liberation-mono-fonts \
-    && yum clean all \
-    && rm -rf /var/cache/yum
+    libreoffice-writer \
+    google-noto-sans-fonts \
+    google-noto-serif-fonts \
+    && dnf clean all \
+    && rm -rf /var/cache/dnf
 
 # Lambda関数のコードをコピー
 COPY package*.json ./
