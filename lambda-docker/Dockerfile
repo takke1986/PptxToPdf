@@ -1,16 +1,28 @@
 # AWS Lambda用のベースイメージを使用
 FROM public.ecr.aws/lambda/nodejs:20
 
-# 必要なパッケージとLibreOfficeをインストール
-# Amazon Linux 2023ではdnfを使用
+# 作業ディレクトリを設定
+WORKDIR /tmp
+
+# 必要なパッケージをインストール
 RUN dnf install -y \
-    libreoffice-core \
-    libreoffice-impress \
-    libreoffice-writer \
-    google-noto-sans-fonts \
-    google-noto-serif-fonts \
+    wget \
+    tar \
     && dnf clean all \
     && rm -rf /var/cache/dnf
+
+# LibreOfficeをダウンロードしてインストール
+RUN wget -q https://downloadarchive.documentfoundation.org/libreoffice/old/7.6.4.1/rpm/x86_64/LibreOffice_7.6.4.1_Linux_x86-64_rpm.tar.gz \
+    && tar -xzf LibreOffice_7.6.4.1_Linux_x86-64_rpm.tar.gz \
+    && cd LibreOffice_7.6.4.1_Linux_x86-64_rpm/RPMS \
+    && dnf install -y *.rpm \
+    && cd /tmp \
+    && rm -rf LibreOffice_7.6.4.1_Linux_x86-64_rpm* \
+    && dnf clean all \
+    && rm -rf /var/cache/dnf
+
+# Lambda関数の作業ディレクトリに戻る
+WORKDIR ${LAMBDA_TASK_ROOT}
 
 # Lambda関数のコードをコピー
 COPY package*.json ./
