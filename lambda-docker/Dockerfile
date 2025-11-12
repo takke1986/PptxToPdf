@@ -5,7 +5,16 @@
 FROM --platform=linux/amd64 public.ecr.aws/shelf/lambda-libreoffice-base:25.2-node20-x86_64
 
 # Java Runtime Environment (LibreOfficeが必要とする)
-RUN dnf install -y java-11-amazon-corretto && dnf clean all
+# 日本語フォントとMicrosoft Office互換フォントをインストール
+RUN dnf install -y \
+    java-11-amazon-corretto \
+    google-noto-sans-cjk-jp-fonts \
+    google-noto-serif-cjk-jp-fonts \
+    ipa-gothic-fonts \
+    ipa-mincho-fonts \
+    liberation-fonts \
+    google-noto-fonts-common \
+    && dnf clean all
 
 # Lambda関数の作業ディレクトリに移動
 WORKDIR ${LAMBDA_TASK_ROOT}
