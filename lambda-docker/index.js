@@ -50,8 +50,8 @@ exports.handler = async (event) => {
     // LibreOfficeを使用してPDFに変換
     console.log('Converting to PDF...');
     try {
-      // LibreOfficeコマンド
-      const command = `libreoffice --headless --invisible --nodefault --nofirststartwizard --nolockcheck --nologo --norestore --convert-to pdf --outdir /tmp ${inputFile}`;
+      // LibreOffice 25.2コマンド（Shelf.ioベースイメージ使用）
+      const command = `libreoffice25.2 --headless --invisible --nodefault --nofirststartwizard --nolockcheck --nologo --norestore --convert-to pdf --outdir /tmp ${inputFile}`;
 
       console.log(`Executing command: ${command}`);
       execSync(command, {
