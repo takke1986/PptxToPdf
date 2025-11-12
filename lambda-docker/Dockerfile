@@ -12,8 +12,15 @@ RUN dnf install -y \
     google-noto-serif-cjk-jp-fonts \
     ipa-gothic-fonts \
     ipa-mincho-fonts \
+    ipa-pgothic-fonts \
+    ipa-pmincho-fonts \
+    vlgothic-fonts \
+    vlgothic-p-fonts \
+    takao-fonts \
+    takao-pgothic-fonts \
     liberation-fonts \
     google-noto-fonts-common \
+    dejavu-fonts-all \
     && dnf clean all
 
 # Lambda関数の作業ディレクトリに移動
