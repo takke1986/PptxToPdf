@@ -5,7 +5,7 @@
 FROM --platform=linux/amd64 public.ecr.aws/shelf/lambda-libreoffice-base:25.2-node20-x86_64
 
 # Java Runtime Environment (LibreOfficeが必要とする)
-RUN yum install -y amazon-corretto-11 && yum clean all
+RUN dnf install -y java-11-amazon-corretto && dnf clean all
 
 # Lambda関数の作業ディレクトリに移動
 WORKDIR ${LAMBDA_TASK_ROOT}
