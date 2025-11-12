@@ -10,17 +10,9 @@ RUN dnf install -y \
     java-11-amazon-corretto \
     google-noto-sans-cjk-jp-fonts \
     google-noto-serif-cjk-jp-fonts \
-    ipa-gothic-fonts \
-    ipa-mincho-fonts \
-    ipa-pgothic-fonts \
-    ipa-pmincho-fonts \
-    vlgothic-fonts \
-    vlgothic-p-fonts \
-    takao-fonts \
-    takao-pgothic-fonts \
     liberation-fonts \
-    google-noto-fonts-common \
-    dejavu-fonts-all \
+    dejavu-sans-fonts \
+    dejavu-serif-fonts \
     && dnf clean all
 
 # Lambda関数の作業ディレクトリに移動
