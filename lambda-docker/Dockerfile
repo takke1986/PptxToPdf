@@ -22,7 +22,11 @@ RUN echo "Downloading LibreOffice for x86_64..." && \
     cd /tmp && \
     rm -rf LibreOffice_7.6.4.1_Linux_x86-64_rpm* && \
     dnf clean all && \
-    rm -rf /var/cache/dnf
+    rm -rf /var/cache/dnf && \
+    echo "Creating symlink for libreoffice command..." && \
+    ln -s /opt/libreoffice7.6/program/soffice /usr/local/bin/libreoffice && \
+    echo "LibreOffice installed successfully" && \
+    /usr/local/bin/libreoffice --version
 
 # Lambda関数の作業ディレクトリに戻る
 WORKDIR ${LAMBDA_TASK_ROOT}
