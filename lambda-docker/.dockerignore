@@ -3,3 +3,5 @@ npm-debug.log
 .git
 .gitignore
 README.md
+base-image
+Dockerfile.optimized
