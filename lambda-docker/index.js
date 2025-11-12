@@ -32,7 +32,8 @@ exports.handler = async (event) => {
 
     // S3からファイルをダウンロード
     const inputFile = `/tmp/input${ext}`;
-    const outputFile = '/tmp/output.pdf';
+    // LibreOfficeは入力ファイル名に基づいて出力ファイルを生成する（例：input.pptx -> input.pdf）
+    const outputFile = '/tmp/input.pdf';
 
     console.log('Downloading file from S3...');
     const getObjectCommand = new GetObjectCommand({
